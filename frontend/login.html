@@ -1,26 +1,61 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Login — Cryptography Lab Simulator</title>
   <link rel="stylesheet" href="styles.css" />
   <style>
-    body { display: flex; align-items: center; justify-content: center; min-height: 100vh; }
+    body {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+    }
 
     /* Animated background blobs */
     .bg-blob {
-      position: fixed; border-radius: 50%;
-      filter: blur(80px); pointer-events: none; z-index: 0;
+      position: fixed;
+      border-radius: 50%;
+      filter: blur(80px);
+      pointer-events: none;
+      z-index: 0;
       animation: blobFloat 8s ease-in-out infinite alternate;
     }
-    .blob1 { width: 400px; height: 400px; background: rgba(0,200,255,0.06); top: -100px; left: -100px; }
-    .blob2 { width: 350px; height: 350px; background: rgba(168,85,247,0.06); bottom: -80px; right: -80px; animation-delay: -4s; }
-    @keyframes blobFloat { from { transform: translate(0,0) scale(1); } to { transform: translate(30px,20px) scale(1.05); } }
+
+    .blob1 {
+      width: 400px;
+      height: 400px;
+      background: rgba(0, 200, 255, 0.06);
+      top: -100px;
+      left: -100px;
+    }
+
+    .blob2 {
+      width: 350px;
+      height: 350px;
+      background: rgba(168, 85, 247, 0.06);
+      bottom: -80px;
+      right: -80px;
+      animation-delay: -4s;
+    }
+
+    @keyframes blobFloat {
+      from {
+        transform: translate(0, 0) scale(1);
+      }
+
+      to {
+        transform: translate(30px, 20px) scale(1.05);
+      }
+    }
 
     .login-wrapper {
-      position: relative; z-index: 1;
-      width: 100%; max-width: 420px;
+      position: relative;
+      z-index: 1;
+      width: 100%;
+      max-width: 420px;
       padding: 1rem;
     }
 
@@ -28,17 +63,20 @@
       text-align: center;
       margin-bottom: 2rem;
     }
+
     .login-logo .logo-icon {
       font-size: 3rem;
       display: block;
       margin-bottom: 0.5rem;
-      filter: drop-shadow(0 0 20px rgba(0,200,255,0.6));
+      filter: drop-shadow(0 0 20px rgba(0, 200, 255, 0.6));
     }
+
     .login-logo h1 {
       font-size: 1.3rem;
       line-height: 1.2;
       color: var(--accent-1);
     }
+
     .login-logo p {
       font-size: 0.8rem;
       color: var(--text-dim);
@@ -52,51 +90,100 @@
       border: 1px solid var(--border);
       border-radius: 10px;
       padding: 2rem;
-      box-shadow: 0 8px 40px rgba(0,0,0,0.7);
+      box-shadow: 0 8px 40px rgba(0, 0, 0, 0.7);
     }
 
     .tab-row {
-      display: flex; gap: 0; margin-bottom: 1.75rem;
-      border: 1px solid var(--border); border-radius: 5px; overflow: hidden;
+      display: flex;
+      gap: 0;
+      margin-bottom: 1.75rem;
+      border: 1px solid var(--border);
+      border-radius: 5px;
+      overflow: hidden;
     }
+
     .tab {
-      flex: 1; padding: 0.55rem; text-align: center;
-      background: none; border: none; cursor: pointer;
-      font-family: var(--font-ui); font-size: 0.85rem;
-      font-weight: 700; letter-spacing: 0.08em;
-      text-transform: uppercase; color: var(--text-dim);
+      flex: 1;
+      padding: 0.55rem;
+      text-align: center;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-family: var(--font-ui);
+      font-size: 0.85rem;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-dim);
       transition: all 0.2s;
     }
-    .tab.active { background: rgba(0,200,255,0.12); color: var(--accent-1); }
+
+    .tab.active {
+      background: rgba(0, 200, 255, 0.12);
+      color: var(--accent-1);
+    }
 
     .input-icon-wrap {
       position: relative;
     }
-    .input-icon-wrap .icon {
-      position: absolute; left: 0.9rem; top: 50%; transform: translateY(-50%);
-      color: var(--text-dim); font-size: 1rem; pointer-events: none;
-    }
-    .input-icon-wrap .form-control { padding-left: 2.5rem; }
 
-    .password-wrap { position: relative; }
-    .toggle-pw {
-      position: absolute; right: 0.9rem; top: 50%; transform: translateY(-50%);
-      background: none; border: none; cursor: pointer;
-      color: var(--text-dim); font-size: 1rem; padding: 0.2rem;
+    .input-icon-wrap .icon {
+      position: absolute;
+      left: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      color: var(--text-dim);
+      font-size: 1rem;
+      pointer-events: none;
     }
-    .toggle-pw:hover { color: var(--accent-1); }
+
+    .input-icon-wrap .form-control {
+      padding-left: 2.5rem;
+    }
+
+    .password-wrap {
+      position: relative;
+    }
+
+    .toggle-pw {
+      position: absolute;
+      right: 0.9rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: var(--text-dim);
+      font-size: 1rem;
+      padding: 0.2rem;
+    }
+
+    .toggle-pw:hover {
+      color: var(--accent-1);
+    }
 
     .demo-hint {
-      text-align: center; margin-top: 1.25rem;
-      font-size: 0.8rem; color: var(--text-dim);
+      text-align: center;
+      margin-top: 1.25rem;
+      font-size: 0.8rem;
+      color: var(--text-dim);
       font-family: var(--font-mono);
     }
-    .demo-hint span { color: var(--accent-2); }
 
-    #errorMsg { display: none; }
-    #successMsg { display: none; }
+    .demo-hint span {
+      color: var(--accent-2);
+    }
+
+    #errorMsg {
+      display: none;
+    }
+
+    #successMsg {
+      display: none;
+    }
   </style>
 </head>
+
 <body>
   <div class="bg-blob blob1"></div>
   <div class="bg-blob blob2"></div>
@@ -123,14 +210,16 @@
           <label class="form-label">Username</label>
           <div class="input-icon-wrap">
             <span class="icon">👤</span>
-            <input type="text" id="loginUser" class="form-control" placeholder="Enter username" autocomplete="username" />
+            <input type="text" id="loginUser" class="form-control" placeholder="Enter username"
+              autocomplete="username" />
           </div>
         </div>
         <div class="form-group">
           <label class="form-label">Password</label>
           <div class="input-icon-wrap password-wrap">
             <span class="icon">🔑</span>
-            <input type="password" id="loginPass" class="form-control" placeholder="Enter password" autocomplete="current-password" />
+            <input type="password" id="loginPass" class="form-control" placeholder="Enter password"
+              autocomplete="current-password" />
             <button type="button" class="toggle-pw" onclick="togglePw('loginPass', this)">👁</button>
           </div>
         </div>
@@ -159,9 +248,9 @@
         <button type="submit" class="btn btn-success btn-full">CREATE ACCOUNT</button>
       </form>
 
-      <div class="demo-hint">
+      <!-- <div class="demo-hint">
         Demo: <span>admin</span> / <span>password123</span>
-      </div>
+      </div> -->
     </div>
   </div>
 
@@ -170,9 +259,9 @@
     if (localStorage.getItem('clab_token')) window.location.href = '/dashboard';
 
     function switchTab(tab) {
-      document.getElementById('loginForm').style.display    = tab === 'login'    ? '' : 'none';
+      document.getElementById('loginForm').style.display = tab === 'login' ? '' : 'none';
       document.getElementById('registerForm').style.display = tab === 'register' ? '' : 'none';
-      document.getElementById('loginTab').classList.toggle('active',    tab === 'login');
+      document.getElementById('loginTab').classList.toggle('active', tab === 'login');
       document.getElementById('registerTab').classList.toggle('active', tab === 'register');
       clearMessages();
     }
@@ -250,4 +339,5 @@
     });
   </script>
 </body>
+
 </html>
