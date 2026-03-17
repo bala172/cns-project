@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decryption — Cryptography Lab</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    #workPanel { display: none; }
+    .result-panel { display: none; margin-top: 1.25rem; }
+
+    .security-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; }
+    .security-pct { font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem; }
+
+    .rsa-priv-hint {
+      font-size: 0.78rem; color: var(--text-dim);
+      margin-top: 0.4rem; font-family: var(--font-mono); line-height: 1.5;
+    }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/dashboard" class="nav-brand"><span class="brand-icon">🔐</span> CryptoLab</a>
+      <div class="nav-links">
+        <a href="/dashboard"  class="nav-link">Dashboard</a>
+        <a href="/encryption" class="nav-link">Encrypt</a>
+        <a href="/decryption" class="nav-link active">Decrypt</a>
+        <span class="nav-user mono" id="navUser"></span>
+        <button id="logoutBtn" class="btn-sm">LOGOUT</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header fade-up">
+      <h1>🔓 DECRYPTION LAB</h1>
+      <p>Select an algorithm, provide the ciphertext and key, and recover the original plaintext.</p>
+    </div>
+
+    <div class="lab-layout">
+      <!-- Sidebar -->
+      <aside>
+        <div class="sidebar-title">Choose Algorithm</div>
+        <div class="algo-grid" style="grid-template-columns:1fr;" id="algoList"></div>
+      </aside>
+
+      <!-- Main -->
+      <main>
+        <div id="placeholder" class="card" style="text-align:center; padding:3rem 2rem; color:var(--text-dim);">
+          <div style="font-size:3rem;margin-bottom:1rem;">👈</div>
+          <p>Select an algorithm from the left to begin decrypting.</p>
+        </div>
+
+        <div id="workPanel">
+          <div class="explanation-box" id="explanationBox">
+            <h4>About <span id="algoNameInExpl"></span></h4>
+            <p id="algoExplanation"></p>
+          </div>
+
+          <div class="card">
+            <div class="card-header">
+              <span class="card-icon">🔓</span>
+              <h3 id="workTitle">Decrypt</h3>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Cipher Text</label>
+              <textarea id="ciphertext" class="form-control" placeholder="Paste the ciphertext here..." rows="4"></textarea>
+            </div>
+
+            <div id="keyGroup" class="form-group">
+              <label class="form-label" id="keyLabel">Key</label>
+              <input type="text" id="keyInput" class="form-control" placeholder="Enter decryption key..." />
+              <small id="keyHint" style="color:var(--text-dim);font-size:0.78rem;margin-top:0.3rem;display:block;"></small>
+            </div>
+
+            <!-- RSA private key textarea -->
+            <div id="rsaPrivGroup" class="form-group" style="display:none;">
+              <label class="form-label">Private Key (PEM)</label>
+              <textarea id="rsaPrivKey" class="form-control" rows="6" placeholder="Paste your RSA private key in PEM format here...
+-----BEGIN RSA PRIVATE KEY-----
+...
+-----END RSA PRIVATE KEY-----"></textarea>
+              <div class="rsa-priv-hint">
+                💡 You can generate a key pair on the Encryption page, then copy the private key here.
+              </div>
+            </div>
+
+            <div id="errorMsg" class="alert alert-error" style="display:none;"></div>
+
+            <button class="btn btn-success" id="decryptBtn" onclick="doDecrypt()">
+              🔓 DECRYPT
+            </button>
+          </div>
+
+          <!-- Result -->
+          <div class="card result-panel" id="resultPanel">
+            <div class="card-header">
+              <span class="card-icon">📊</span>
+              <h3>Decryption Result</h3>
+            </div>
+
+            <div class="output-section">
+              <div class="security-row">
+                <span class="output-label">Algorithm Security</span>
+                <span class="security-pct" id="secPct" style="color:var(--accent-2);">0%</span>
+              </div>
+              <div class="security-bar-wrap">
+                <div class="security-bar" id="secBar" style="width:0%;"></div>
+              </div>
+              <div style="font-size:0.8rem;color:var(--text-dim);" id="secLabel"></div>
+            </div>
+
+            <div class="output-section" style="margin-top:1rem;">
+              <div class="output-label">Ciphertext Input</div>
+              <div class="output-block">
+                <div class="output-value" id="outCipher" style="word-break:break-all;"></div>
+              </div>
+            </div>
+
+            <div class="output-section">
+              <div class="output-label" style="display:flex;justify-content:space-between;">
+                Recovered Plaintext
+                <button class="copy-btn" onclick="copyText('outPlain')">Copy</button>
+              </div>
+              <div class="output-block" style="border-color:var(--accent-2);box-shadow:0 0 12px rgba(0,255,157,0.1);">
+                <div class="output-value" id="outPlain" style="color:var(--accent-2);"></div>
+              </div>
+            </div>
+
+            <div class="output-section" id="outAlgoSection">
+              <div class="output-label">Algorithm Used</div>
+              <div class="output-block">
+                <div class="output-value" id="outAlgo"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    requireAuth();
+
+    const ALGORITHMS = [
+      { id:'xor',          name:'XOR Encryption',      icon:'⊕',  security:10,  keyType:'number', badge:'sym',
+        hint:'Same numeric key used during encryption',
+        explain:'XOR decryption uses the same operation as encryption: XOR each byte with the same key to recover plaintext.' },
+      { id:'andxor',       name:'AND/XOR with 127',     icon:'⊕',  security:15,  keyType:'none',   badge:'sym',
+        hint:'No key required (fixed key = 127)',
+        explain:'The AND/XOR transform with 127 is its own inverse. Apply the same operation to the ciphertext to recover plaintext.' },
+      { id:'caesar',       name:'Caesar Cipher',        icon:'🏛',  security:20,  keyType:'number', badge:'sym',
+        hint:'Same shift value (1–25) used to encrypt',
+        explain:'Decryption shifts letters in the opposite direction by the same amount.' },
+      { id:'substitution', name:'Substitution Cipher',  icon:'🔤',  security:30,  keyType:'text',   badge:'sym',
+        hint:'Same 26-letter substitution key used to encrypt',
+        explain:'Decryption reverses the substitution mapping using the same key alphabet.' },
+      { id:'hill',         name:'Hill Cipher',          icon:'🔢',  security:50,  keyType:'matrix', badge:'sym',
+        hint:'Same matrix "a,b,c,d" used to encrypt (e.g. 3,3,2,5)',
+        explain:'Decryption multiplies by the modular inverse of the key matrix.' },
+      { id:'des',          name:'DES Algorithm',        icon:'🛡',  security:65,  keyType:'text',   badge:'sym',
+        hint:'Same text key used during encryption',
+        explain:'DES decryption runs the Feistel rounds in reverse using the same key schedule.' },
+      { id:'blowfish',     name:'Blowfish Algorithm',   icon:'💨',  security:80,  keyType:'text',   badge:'sym',
+        hint:'Same text key used during encryption',
+        explain:'Blowfish decryption reverses the Feistel rounds using the same key-derived P-array and S-boxes.' },
+      { id:'aes',          name:'Rijndael (AES)',        icon:'⚡',  security:95,  keyType:'text',   badge:'sym',
+        hint:'Same text key used during encryption',
+        explain:'AES decryption applies the inverse round transformations (InvShiftRows, InvSubBytes, InvMixColumns) in reverse order.' },
+      { id:'rsa',          name:'RSA Encryption',       icon:'🗝',  security:98,  keyType:'rsa',    badge:'asym',
+        hint:'Paste the RSA private key (PEM format) in the field below',
+        explain:'RSA decryption uses the private key to recover plaintext from the Base64-encoded ciphertext.' },
+    ];
+
+    const securityLabels = {
+      10:'Very Weak', 15:'Very Weak', 20:'Weak', 30:'Low',
+      50:'Moderate', 65:'Fair', 80:'Good', 95:'Excellent', 98:'Excellent'
+    };
+
+    const algoNames = Object.fromEntries(ALGORITHMS.map(a => [a.id, a.name]));
+    let selectedAlgo = null;
+
+    function buildAlgoList() {
+      const list = document.getElementById('algoList');
+      list.innerHTML = ALGORITHMS.map(a => `
+        <button class="algo-btn" onclick="selectAlgo('${a.id}')" id="btn_${a.id}">
+          <span style="font-size:1.2rem;">${a.icon}</span>
+          <div class="algo-name">${a.name}</div>
+          <div class="algo-security">Security: ${a.security}%</div>
+          <span class="algo-badge badge-${a.badge}">${a.badge === 'sym' ? 'Symmetric' : 'Asymmetric'}</span>
+        </button>
+      `).join('');
+    }
+
+    function selectAlgo(id) {
+      selectedAlgo = ALGORITHMS.find(a => a.id === id);
+      if (!selectedAlgo) return;
+
+      document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('btn_' + id).classList.add('selected');
+      document.getElementById('placeholder').style.display  = 'none';
+      document.getElementById('workPanel').style.display    = 'block';
+      document.getElementById('resultPanel').style.display  = 'none';
+
+      document.getElementById('algoNameInExpl').textContent  = selectedAlgo.name;
+      document.getElementById('algoExplanation').textContent = selectedAlgo.explain;
+      document.getElementById('workTitle').textContent       = `Decrypt with ${selectedAlgo.name}`;
+
+      const keyGroup     = document.getElementById('keyGroup');
+      const rsaPrivGroup = document.getElementById('rsaPrivGroup');
+
+      if (selectedAlgo.keyType === 'none') {
+        keyGroup.style.display     = 'none';
+        rsaPrivGroup.style.display = 'none';
+      } else if (selectedAlgo.keyType === 'rsa') {
+        keyGroup.style.display     = 'none';
+        rsaPrivGroup.style.display = 'block';
+      } else {
+        keyGroup.style.display     = 'block';
+        rsaPrivGroup.style.display = 'none';
+        document.getElementById('keyInput').value       = '';
+        document.getElementById('keyInput').placeholder = selectedAlgo.hint;
+        document.getElementById('keyHint').textContent  = selectedAlgo.hint;
+      }
+
+      document.getElementById('errorMsg').style.display = 'none';
+      document.getElementById('ciphertext').value = '';
+    }
+
+    async function doDecrypt() {
+      if (!selectedAlgo) return;
+      const ciphertext = document.getElementById('ciphertext').value.trim();
+      if (!ciphertext) return showError('Please enter ciphertext.');
+
+      let key = document.getElementById('keyInput').value.trim();
+      if (selectedAlgo.keyType === 'rsa') {
+        key = document.getElementById('rsaPrivKey').value.trim();
+        if (!key) return showError('Please paste the RSA private key.');
+      }
+
+      const btn = document.getElementById('decryptBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Decrypting…';
+      hideError();
+
+      try {
+        const res = await authFetch('/decrypt', {
+          method: 'POST',
+          body: JSON.stringify({ algorithm: selectedAlgo.id, ciphertext, key })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showResult(data);
+      } catch (e) {
+        showError(e.message);
+      }
+      btn.disabled = false;
+      btn.innerHTML = '🔓 DECRYPT';
+    }
+
+    function showResult(data) {
+      document.getElementById('resultPanel').style.display = 'block';
+      document.getElementById('outCipher').textContent  = data.ciphertext;
+      document.getElementById('outPlain').textContent   = data.plaintext;
+      document.getElementById('outAlgo').textContent    = algoNames[data.algorithm] || data.algorithm;
+
+      const sec = data.security || 50;
+      document.getElementById('secPct').textContent   = sec + '%';
+      document.getElementById('secLabel').textContent = securityLabels[sec] || '';
+      setSecBar(sec);
+
+      document.getElementById('resultPanel').scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+
+    function setSecBar(pct) {
+      const bar = document.getElementById('secBar');
+      setTimeout(() => { bar.style.width = pct + '%'; }, 50);
+      bar.className = 'security-bar ' + (pct < 40 ? 'low' : pct < 70 ? 'medium' : 'high');
+    }
+
+    function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
+    function hideError()    { document.getElementById('errorMsg').style.display = 'none'; }
+
+    function copyText(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      });
+    }
+
+    buildAlgoList();
+  </script>
+</body>
+</html>

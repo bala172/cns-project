@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Encryption — Cryptography Lab</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    #workPanel { display: none; }
+    .result-panel { display: none; margin-top: 1.25rem; }
+
+    .rsa-keys { display: none; margin-top: 1rem; }
+    .rsa-keys.visible { display: block; }
+    .rsa-key-box { margin-bottom: 0.75rem; }
+    .rsa-key-box .output-label { display: flex; justify-content: space-between; align-items: center; }
+
+    .security-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.4rem; }
+    .security-pct {
+      font-family: var(--font-mono); font-weight: 700; font-size: 1.1rem;
+    }
+    .security-label { font-size: 0.8rem; color: var(--text-dim); }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <div class="container">
+      <a href="/dashboard" class="nav-brand"><span class="brand-icon">🔐</span> CryptoLab</a>
+      <div class="nav-links">
+        <a href="/dashboard"  class="nav-link">Dashboard</a>
+        <a href="/encryption" class="nav-link active">Encrypt</a>
+        <a href="/decryption" class="nav-link">Decrypt</a>
+        <span class="nav-user mono" id="navUser"></span>
+        <button id="logoutBtn" class="btn-sm">LOGOUT</button>
+      </div>
+    </div>
+  </nav>
+
+  <div class="container">
+    <div class="page-header fade-up">
+      <h1>🔒 ENCRYPTION LAB</h1>
+      <p>Select an algorithm, enter your plaintext and key, then encrypt.</p>
+    </div>
+
+    <div class="lab-layout">
+      <!-- Sidebar: Algorithm selector -->
+      <aside>
+        <div class="sidebar-title">Choose Algorithm</div>
+        <div class="algo-grid" style="grid-template-columns:1fr;" id="algoList">
+          <!-- Populated by JS -->
+        </div>
+      </aside>
+
+      <!-- Main panel -->
+      <main>
+        <!-- Placeholder -->
+        <div id="placeholder" class="card" style="text-align:center; padding:3rem 2rem; color:var(--text-dim);">
+          <div style="font-size:3rem;margin-bottom:1rem;">👈</div>
+          <p>Select an algorithm from the left to begin encrypting.</p>
+        </div>
+
+        <!-- Work panel -->
+        <div id="workPanel">
+          <!-- Explanation -->
+          <div class="explanation-box" id="explanationBox">
+            <h4>About <span id="algoNameInExpl"></span></h4>
+            <p id="algoExplanation"></p>
+          </div>
+
+          <!-- Input card -->
+          <div class="card">
+            <div class="card-header">
+              <span class="card-icon" id="workIcon">🔒</span>
+              <h3 id="workTitle">Encrypt</h3>
+            </div>
+
+            <div class="form-group">
+              <label class="form-label">Plain Text</label>
+              <textarea id="plaintext" class="form-control" placeholder="Enter the text you want to encrypt..." rows="3"></textarea>
+            </div>
+
+            <div id="keyGroup" class="form-group">
+              <label class="form-label" id="keyLabel">Key</label>
+              <input type="text" id="keyInput" class="form-control" placeholder="Enter encryption key..." />
+              <small id="keyHint" style="color:var(--text-dim);font-size:0.78rem;margin-top:0.3rem;display:block;"></small>
+            </div>
+
+            <div id="rsaKeygenRow" style="display:none; margin-bottom:1rem;">
+              <button class="btn btn-outline btn-sm" id="genKeyBtn" onclick="generateRSAKeys()">
+                ⚙ Generate RSA Key Pair
+              </button>
+              <span id="keygenStatus" style="margin-left:0.75rem; font-size:0.8rem; color:var(--text-dim);"></span>
+            </div>
+
+            <div id="errorMsg" class="alert alert-error" style="display:none;"></div>
+
+            <button class="btn btn-primary" id="encryptBtn" onclick="doEncrypt()">
+              🔒 ENCRYPT
+            </button>
+          </div>
+
+          <!-- Result card -->
+          <div class="card result-panel" id="resultPanel">
+            <div class="card-header">
+              <span class="card-icon">📊</span>
+              <h3>Encryption Result</h3>
+            </div>
+
+            <!-- Security strength -->
+            <div class="output-section">
+              <div class="security-row">
+                <span class="output-label">Security Strength</span>
+                <span class="security-pct" id="secPct" style="color:var(--accent-1);">0%</span>
+              </div>
+              <div class="security-bar-wrap">
+                <div class="security-bar" id="secBar" style="width:0%;"></div>
+              </div>
+              <div class="security-label" id="secLabel"></div>
+            </div>
+
+            <!-- Plain / Cipher -->
+            <div class="output-section" style="margin-top:1rem;">
+              <div class="output-label">Plaintext Input</div>
+              <div class="output-block">
+                <div class="output-value" id="outPlain"></div>
+              </div>
+            </div>
+            <div class="output-section">
+              <div class="output-label" style="display:flex;justify-content:space-between;">
+                Ciphertext Output
+                <button class="copy-btn" onclick="copyText('outCipher')">Copy</button>
+              </div>
+              <div class="output-block">
+                <div class="output-value" id="outCipher"></div>
+              </div>
+            </div>
+
+            <!-- Key used -->
+            <div class="output-section" id="outKeySection">
+              <div class="output-label">Key Used</div>
+              <div class="output-block">
+                <div class="output-value" id="outKey"></div>
+              </div>
+            </div>
+
+            <!-- RSA Key Display -->
+            <div id="rsaKeyDisplay" class="rsa-keys">
+              <div class="rsa-key-box">
+                <div class="output-label">
+                  Public Key (RSA-2048)
+                  <button class="copy-btn" onclick="copyText('rsaPub')">Copy</button>
+                </div>
+                <div class="key-box" id="rsaPub"></div>
+              </div>
+              <div class="rsa-key-box">
+                <div class="output-label">
+                  Private Key (RSA-2048)
+                  <button class="copy-btn" onclick="copyText('rsaPriv')">Copy</button>
+                </div>
+                <div class="key-box" id="rsaPriv"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+  </div>
+
+  <script src="auth.js"></script>
+  <script>
+    requireAuth();
+
+    // ── Algorithm definitions ───────────────────────────────────────────────────
+    const ALGORITHMS = [
+      { id:'xor',          name:'XOR Encryption',      icon:'⊕',  security:10,  keyType:'number', badge:'sym',
+        hint:'Numeric key (e.g. 42)',
+        explain:'XOR (exclusive-OR) encryption XORs each character\'s ASCII value with a numeric key. Simple and fast, but easily broken—same key decrypts. Security: very low.' },
+      { id:'andxor',       name:'AND/XOR with 127',     icon:'⊕',  security:15,  keyType:'none',   badge:'sym',
+        hint:'No key required (key=127 fixed)',
+        explain:'Each character is first ANDed with 127 (clears the top bit), then XORed with 127. A fixed-key bitwise transform—educational but not secure.' },
+      { id:'caesar',       name:'Caesar Cipher',        icon:'🏛',  security:20,  keyType:'number', badge:'sym',
+        hint:'Shift value 1–25 (e.g. 3)',
+        explain:'The Caesar cipher shifts each letter by a fixed number of positions in the alphabet. Julius Caesar used a shift of 3. Vulnerable to brute-force (only 25 keys).' },
+      { id:'substitution', name:'Substitution Cipher',  icon:'🔤',  security:30,  keyType:'text',   badge:'sym',
+        hint:'26-letter scrambled alphabet (e.g. QWERTYUIOPASDFGHJKLZXCVBNM)',
+        explain:'Each letter maps to a different letter via a substitution alphabet. The key is a permutation of A-Z. Vulnerable to frequency analysis.' },
+      { id:'hill',         name:'Hill Cipher',          icon:'🔢',  security:50,  keyType:'matrix', badge:'sym',
+        hint:'2×2 matrix as "a,b,c,d" e.g. 3,3,2,5',
+        explain:'A polygraphic cipher using matrix multiplication mod 26. Encrypts letter pairs. The key must be an invertible 2×2 matrix. Stronger than Caesar but still breakable.' },
+      { id:'des',          name:'DES Algorithm',        icon:'🛡',  security:65,  keyType:'text',   badge:'sym',
+        hint:'Any text key (padded to 8 bytes)',
+        explain:'Data Encryption Standard (1977). 56-bit key, 16 Feistel rounds on 64-bit blocks. Once the standard; now considered insecure due to short key length.' },
+      { id:'blowfish',     name:'Blowfish Algorithm',   icon:'💨',  security:80,  keyType:'text',   badge:'sym',
+        hint:'Any text key (any length)',
+        explain:'Designed by Bruce Schneier (1993). Variable-length key (32–448 bits), 16-round Feistel network. Fast and secure for most applications. Free and unpatented.' },
+      { id:'aes',          name:'Rijndael (AES)',        icon:'⚡',  security:95,  keyType:'text',   badge:'sym',
+        hint:'Any text key (derived to 256 bits)',
+        explain:'Advanced Encryption Standard (NIST 2001). 128-bit blocks, 256-bit keys. SPN structure with 14 rounds. The gold standard for symmetric encryption.' },
+      { id:'rsa',          name:'RSA Encryption',       icon:'🗝',  security:98,  keyType:'keypair',badge:'asym',
+        hint:'No manual key needed — generates a 2048-bit keypair',
+        explain:'Asymmetric cipher (1977) based on integer factorization. Uses a public key to encrypt and a private key to decrypt. RSA-2048 is widely used in TLS/SSL.' },
+    ];
+
+    const securityLabels = {
+      10:'Very Weak — easily brute-forced', 15:'Very Weak — single-key bitwise', 20:'Weak — only 25 possible keys',
+      30:'Low — vulnerable to frequency analysis', 50:'Moderate — polygraphic but breakable',
+      65:'Fair — deprecated (56-bit key too short)', 80:'Good — widely used, no known attacks',
+      95:'Excellent — current gold standard', 98:'Excellent — widely used in PKI/TLS'
+    };
+
+    let selectedAlgo = null;
+
+    // Build sidebar list
+    function buildAlgoList() {
+      const list = document.getElementById('algoList');
+      list.innerHTML = ALGORITHMS.map(a => `
+        <button class="algo-btn" onclick="selectAlgo('${a.id}')" id="btn_${a.id}">
+          <span style="font-size:1.2rem;">${a.icon}</span>
+          <div class="algo-name">${a.name}</div>
+          <div class="algo-security">Security: ${a.security}%</div>
+          <span class="algo-badge badge-${a.badge}">${a.badge === 'sym' ? 'Symmetric' : 'Asymmetric'}</span>
+        </button>
+      `).join('');
+    }
+
+    function selectAlgo(id) {
+      selectedAlgo = ALGORITHMS.find(a => a.id === id);
+      if (!selectedAlgo) return;
+
+      // Highlight selected
+      document.querySelectorAll('.algo-btn').forEach(b => b.classList.remove('selected'));
+      document.getElementById('btn_' + id).classList.add('selected');
+
+      // Show work panel
+      document.getElementById('placeholder').style.display = 'none';
+      document.getElementById('workPanel').style.display   = 'block';
+      document.getElementById('resultPanel').style.display = 'none';
+
+      // Explanation
+      document.getElementById('algoNameInExpl').textContent = selectedAlgo.name;
+      document.getElementById('algoExplanation').textContent = selectedAlgo.explain;
+      document.getElementById('workTitle').textContent = `Encrypt with ${selectedAlgo.name}`;
+
+      // Key group visibility
+      const keyGroup = document.getElementById('keyGroup');
+      const rsaRow   = document.getElementById('rsaKeygenRow');
+      if (selectedAlgo.keyType === 'none') {
+        keyGroup.style.display = 'none';
+        rsaRow.style.display   = 'none';
+      } else if (selectedAlgo.keyType === 'keypair') {
+        keyGroup.style.display = 'none';
+        rsaRow.style.display   = 'block';
+      } else {
+        keyGroup.style.display = 'block';
+        rsaRow.style.display   = 'none';
+        document.getElementById('keyLabel').textContent = 'Key';
+        document.getElementById('keyInput').value = '';
+        document.getElementById('keyInput').placeholder = selectedAlgo.hint;
+        document.getElementById('keyHint').textContent = selectedAlgo.hint;
+      }
+
+      document.getElementById('errorMsg').style.display = 'none';
+      document.getElementById('plaintext').value = '';
+      document.getElementById('keygenStatus').textContent = '';
+      document.getElementById('rsaKeyDisplay').classList.remove('visible');
+    }
+
+    async function generateRSAKeys() {
+      const btn = document.getElementById('genKeyBtn');
+      const status = document.getElementById('keygenStatus');
+      btn.disabled = true;
+      status.textContent = 'Generating RSA-2048 keypair…';
+
+      try {
+        const res = await authFetch('/keygen', { method: 'POST' });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        status.textContent = '✓ Keys generated';
+        status.style.color = 'var(--accent-2)';
+        // Display keys in result panel
+        document.getElementById('rsaPub').textContent  = data.publicKey;
+        document.getElementById('rsaPriv').textContent = data.privateKey;
+        document.getElementById('resultPanel').style.display = 'block';
+        document.getElementById('rsaKeyDisplay').classList.add('visible');
+        document.getElementById('outKeySection').style.display = 'none';
+        document.getElementById('outPlain').textContent  = '(encrypt a message to see it here)';
+        document.getElementById('outCipher').textContent = '(press Encrypt after entering plaintext)';
+        document.getElementById('secPct').textContent = '98%';
+        setSecBar(98);
+        document.getElementById('secLabel').textContent = securityLabels[98];
+      } catch (e) {
+        status.textContent = '✗ ' + e.message;
+        status.style.color = 'var(--danger)';
+      }
+      btn.disabled = false;
+    }
+
+    async function doEncrypt() {
+      if (!selectedAlgo) return;
+      const plaintext = document.getElementById('plaintext').value.trim();
+      if (!plaintext) return showError('Please enter plaintext.');
+
+      const key = document.getElementById('keyInput').value.trim();
+      const btn = document.getElementById('encryptBtn');
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner"></span> Encrypting…';
+      hideError();
+
+      try {
+        const res = await authFetch('/encrypt', {
+          method: 'POST',
+          body: JSON.stringify({ algorithm: selectedAlgo.id, plaintext, key })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error);
+        showResult(data);
+      } catch (e) {
+        showError(e.message);
+      }
+      btn.disabled = false;
+      btn.innerHTML = '🔒 ENCRYPT';
+    }
+
+    function showResult(data) {
+      document.getElementById('resultPanel').style.display = 'block';
+      document.getElementById('outPlain').textContent  = data.plaintext;
+      document.getElementById('outCipher').textContent = data.ciphertext;
+      document.getElementById('outKey').textContent    = data.key || data.iv || '(auto-generated)';
+      document.getElementById('outKeySection').style.display = 'block';
+
+      const sec = data.security || 50;
+      document.getElementById('secPct').textContent = sec + '%';
+      document.getElementById('secLabel').textContent = securityLabels[sec] || '';
+      setSecBar(sec);
+
+      // RSA key display
+      if (data.publicKey) {
+        document.getElementById('rsaKeyDisplay').classList.add('visible');
+        document.getElementById('rsaPub').textContent  = data.publicKey;
+        document.getElementById('rsaPriv').textContent = data.privateKey;
+      } else {
+        document.getElementById('rsaKeyDisplay').classList.remove('visible');
+      }
+
+      document.getElementById('resultPanel').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+
+    function setSecBar(pct) {
+      const bar = document.getElementById('secBar');
+      setTimeout(() => { bar.style.width = pct + '%'; }, 50);
+      bar.className = 'security-bar ' + (pct < 40 ? 'low' : pct < 70 ? 'medium' : 'high');
+      const color = pct >= 80 ? 'var(--accent-2)' : pct >= 50 ? 'var(--warning)' : 'var(--danger)';
+      document.getElementById('secPct').style.color = color;
+    }
+
+    function showError(msg) { const el = document.getElementById('errorMsg'); el.textContent = '⚠ ' + msg; el.style.display = 'block'; }
+    function hideError()    { document.getElementById('errorMsg').style.display = 'none'; }
+
+    function copyText(id) {
+      const text = document.getElementById(id).textContent;
+      navigator.clipboard.writeText(text).catch(() => {
+        const ta = document.createElement('textarea');
+        ta.value = text; document.body.appendChild(ta); ta.select();
+        document.execCommand('copy'); document.body.removeChild(ta);
+      });
+    }
+
+    buildAlgoList();
+  </script>
+</body>
+</html>
